@@ -1,40 +1,38 @@
-import { getAllMonthsWithinRange } from '../utils/moment_constants';
 import request from '../utils/request';
 
 export async function queryIndexMapping(params) {
   const { datastoreConfig, indices } = params;
 
-  const endpoint = `${datastoreConfig.elasticsearch}/${datastoreConfig.prefix}${
+  const url = `${datastoreConfig.elasticsearch}/${datastoreConfig.prefix}${
     datastoreConfig.run_index
   }${indices[0]}/_mappings`;
 
-  return request.get(endpoint);
+  const endpoint = `${datastoreConfig.test_server}/download`;
+
+  return request.post(endpoint, {
+    data: {
+      url,
+    },
+  });
 }
 
 export async function searchQuery(params) {
-  try {
-    const { datastoreConfig, selectedFields, selectedDateRange, query } = params;
+  const { datastoreConfig, selectedFields, selectedIndices, query } = params;
 
-    const endpoint = `${datastoreConfig.elasticsearch}/${getAllMonthsWithinRange(
-      datastoreConfig,
-      datastoreConfig.run_index,
-      selectedDateRange
-    )}/_search`;
+  let indices = '';
+  selectedIndices.forEach(value => {
+    indices += `${datastoreConfig.prefix + datastoreConfig.run_index + value},`;
+  });
 
-    return request.post(endpoint, {
-      params: {
-        ignore_unavailable: true,
-      },
-      data: {
+  const url = `${datastoreConfig.elasticsearch}/${indices}/_search`;
+
+  const endpoint = `${datastoreConfig.test_server}/download`;
+
+  return request.post(endpoint, {
+    data: {
+      url,
+      payload: {
         size: 10000,
-        filter: {
-          range: {
-            '@timestamp': {
-              gte: selectedDateRange.start,
-              lte: selectedDateRange.end,
-            },
-          },
-        },
         sort: [
           {
             '@timestamp': {
@@ -55,8 +53,6 @@ export async function searchQuery(params) {
         },
         fields: selectedFields,
       },
-    });
-  } catch (error) {
-    throw error;
-  }
+    },
+  });
 }
